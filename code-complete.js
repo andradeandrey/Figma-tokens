@@ -91,12 +91,12 @@ function formatTokenValue(value) {
 }
 
 // Coletar TODOS os estilos locais do Figma
-function collectAllFigmaStyles() {
+async function collectAllFigmaStyles() {
   const tokens = [];
   
   // 1. Paint Styles (cores, gradientes)
   try {
-    const paintStyles = figma.getLocalPaintStyles();
+    const paintStyles = await figma.getLocalPaintStylesAsync();
     console.log(`Paint Styles: ${paintStyles.length}`);
     
     paintStyles.forEach(style => {
@@ -138,7 +138,7 @@ function collectAllFigmaStyles() {
   
   // 2. Text Styles
   try {
-    const textStyles = figma.getLocalTextStyles();
+    const textStyles = await figma.getLocalTextStylesAsync();
     console.log(`Text Styles: ${textStyles.length}`);
     
     textStyles.forEach(style => {
@@ -173,7 +173,7 @@ function collectAllFigmaStyles() {
   
   // 3. Effect Styles (sombras, blur)
   try {
-    const effectStyles = figma.getLocalEffectStyles();
+    const effectStyles = await figma.getLocalEffectStylesAsync();
     console.log(`Effect Styles: ${effectStyles.length}`);
     
     effectStyles.forEach(style => {
@@ -208,7 +208,7 @@ function collectAllFigmaStyles() {
   
   // 4. Grid Styles
   try {
-    const gridStyles = figma.getLocalGridStyles();
+    const gridStyles = await figma.getLocalGridStylesAsync();
     console.log(`Grid Styles: ${gridStyles.length}`);
     
     gridStyles.forEach(style => {
@@ -247,15 +247,15 @@ function collectAllFigmaStyles() {
 }
 
 // Coletar variáveis locais (Figma Variables)
-function collectFigmaVariables() {
+async function collectFigmaVariables() {
   const tokens = [];
   
   try {
-    const collections = figma.variables.getLocalVariableCollections();
+    const collections = await figma.variables.getLocalVariableCollectionsAsync();
     console.log(`Variable Collections: ${collections.length}`);
     
-    collections.forEach(collection => {
-      const variables = collection.variableIds.map(id => figma.variables.getVariableById(id));
+    for (const collection of collections) {
+      const variables = await Promise.all(collection.variableIds.map(id => figma.variables.getVariableByIdAsync(id)));
       
       variables.forEach(variable => {
         if (variable) {
@@ -285,7 +285,7 @@ function collectFigmaVariables() {
           }
         }
       });
-    });
+    }
   } catch (e) {
     console.error('Erro ao coletar variables:', e);
   }
@@ -310,15 +310,15 @@ function formatVariableValue(value) {
 }
 
 // Handler de mensagens
-figma.ui.onmessage = msg => {
+figma.ui.onmessage = async msg => {
   console.log('Mensagem recebida:', msg);
   
   if (msg.type === 'get-all-tokens') {
     console.log('Coletando TODOS os tokens...');
     
     // Coletar de todas as fontes
-    const figmaStyles = collectAllFigmaStyles();
-    const figmaVariables = collectFigmaVariables();
+    const figmaStyles = await collectAllFigmaStyles();
+    const figmaVariables = await collectFigmaVariables();
     const tokenStudioTokens = detectTokenStudioTokens();
     
     // Combinar todos
@@ -355,8 +355,8 @@ figma.ui.onmessage = msg => {
   
   if (msg.type === 'export-all') {
     // Exportar em formato estruturado
-    const figmaStyles = collectAllFigmaStyles();
-    const figmaVariables = collectFigmaVariables();
+    const figmaStyles = await collectAllFigmaStyles();
+    const figmaVariables = await collectFigmaVariables();
     const tokenStudioTokens = detectTokenStudioTokens();
     
     const exportData = {

@@ -250,7 +250,8 @@
   
   <div class="controls">
     <button class="btn" onclick="loadAllTokens()">🔄 Atualizar</button>
-    <button class="btn btn-secondary" onclick="exportAll()">📥 Exportar Tudo</button>
+    <button class="btn btn-secondary" onclick="exportAll()">📥 Exportar JSON</button>
+    <button class="btn btn-secondary" onclick="generateTable()">📊 Gerar Tabela</button>
   </div>
   
   <div class="token-list" id="tokenList">
@@ -371,6 +372,232 @@
       parent.postMessage({ 
         pluginMessage: { type: 'export-all' } 
       }, '*');
+    }
+    
+    function generateTable() {
+      if (allTokens.length === 0) {
+        alert('Nenhum token carregado. Clique em "Atualizar" primeiro.');
+        return;
+      }
+      
+      updateStatus('Gerando tabela HTML...');
+      
+      // Gerar HTML da tabela
+      let tableHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Tabela de Tokens - ${new Date().toLocaleDateString()}</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    .stats {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #5551ff;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+    }
+    table {
+      width: 100%;
+      background: white;
+      border-collapse: collapse;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    th {
+      background: #5551ff;
+      color: white;
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+    }
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #e0e0e0;
+      font-size: 14px;
+    }
+    tr:hover {
+      background: #f8f8f8;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    .color-preview {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      border: 1px solid #e0e0e0;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    .type-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .type-color { background: #ffe4e6; color: #e11d48; }
+    .type-typography { background: #e0f2fe; color: #0369a1; }
+    .type-effect { background: #f3e8ff; color: #7c3aed; }
+    .type-grid { background: #fef3c7; color: #d97706; }
+    .type-other { background: #e5e7eb; color: #6b7280; }
+    .source-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .source-figma { background: #f24e1e; color: white; }
+    .source-variables { background: #0fa958; color: white; }
+    .source-studio { background: #5551ff; color: white; }
+    .monospace {
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 12px;
+      background: #f5f5f5;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+    .no-data {
+      color: #999;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎨 Tabela de Design Tokens</h1>
+  
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-value">${allTokens.length}</div>
+      <div class="stat-label">Total de Tokens</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${allTokens.filter(t => t.type === 'color').length}</div>
+      <div class="stat-label">Cores</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${allTokens.filter(t => t.type === 'typography').length}</div>
+      <div class="stat-label">Tipografia</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${allTokens.filter(t => t.source === 'Figma').length}</div>
+      <div class="stat-label">Figma Styles</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${allTokens.filter(t => t.source === 'Figma Variables').length}</div>
+      <div class="stat-label">Variables</div>
+    </div>
+  </div>
+  
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Nome</th>
+        <th>Valor</th>
+        <th>Tipo</th>
+        <th>Fonte</th>
+        <th>Descrição</th>
+        <th>Uso</th>
+      </tr>
+    </thead>
+    <tbody>`;
+      
+      // Adicionar linhas da tabela
+      allTokens.forEach((token, index) => {
+        let valueDisplay = token.value;
+        
+        // Preview de cor se for hex
+        if (token.type === 'color' && token.value.startsWith('#')) {
+          valueDisplay = `<span class="color-preview" style="background: ${token.value}"></span><span class="monospace">${token.value}</span>`;
+        } else {
+          valueDisplay = `<span class="monospace">${escapeHtml(token.value)}</span>`;
+        }
+        
+        // Badge de tipo
+        const typeBadge = `<span class="type-badge type-${token.type}">${token.type}</span>`;
+        
+        // Badge de fonte
+        let sourceClass = 'figma';
+        if (token.source === 'Figma Variables') sourceClass = 'variables';
+        if (token.source === 'Token Studio') sourceClass = 'studio';
+        const sourceBadge = `<span class="source-badge source-${sourceClass}">${token.source}</span>`;
+        
+        // Descrição
+        const description = token.description || '<span class="no-data">-</span>';
+        
+        // Contagem de uso
+        const usage = token.consumers !== undefined ? token.consumers : '-';
+        
+        tableHTML += `
+      <tr>
+        <td>${index + 1}</td>
+        <td><strong>${escapeHtml(token.name)}</strong></td>
+        <td>${valueDisplay}</td>
+        <td>${typeBadge}</td>
+        <td>${sourceBadge}</td>
+        <td>${description}</td>
+        <td>${usage}</td>
+      </tr>`;
+      });
+      
+      tableHTML += `
+    </tbody>
+  </table>
+  
+  <p style="margin-top: 20px; color: #666; font-size: 12px;">
+    Gerado em ${new Date().toLocaleString()} • Total de ${allTokens.length} tokens
+  </p>
+</body>
+</html>`;
+      
+      // Criar blob e fazer download
+      const blob = new Blob([tableHTML], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tokens-table-${Date.now()}.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      updateStatus('Tabela HTML gerada e baixada!');
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
     
     // Escutar mensagens
