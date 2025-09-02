@@ -13,6 +13,7 @@ const searchInput = document.getElementById('searchInput') as HTMLInputElement;
 const filterSelect = document.getElementById('filterSelect') as HTMLSelectElement;
 const refreshBtn = document.getElementById('refreshBtn') as HTMLButtonElement;
 const exportBtn = document.getElementById('exportBtn') as HTMLButtonElement;
+const createSamplesBtn = document.getElementById('createSamplesBtn') as HTMLButtonElement;
 const totalCount = document.getElementById('totalCount') as HTMLSpanElement;
 const filteredCount = document.getElementById('filteredCount') as HTMLSpanElement;
 
@@ -82,22 +83,32 @@ function updateStats() {
 }
 
 function loadTokens() {
+  console.log('Solicitando tokens...');
   parent.postMessage({ pluginMessage: { type: 'get-tokens' } }, '*');
 }
 
 function exportTokens() {
+  console.log('Exportando tokens...');
   parent.postMessage({ pluginMessage: { type: 'export-tokens' } }, '*');
+}
+
+function createSampleTokens() {
+  console.log('Criando tokens de exemplo...');
+  parent.postMessage({ pluginMessage: { type: 'create-samples' } }, '*');
 }
 
 searchInput.addEventListener('input', filterTokens);
 filterSelect.addEventListener('change', filterTokens);
 refreshBtn.addEventListener('click', loadTokens);
 exportBtn.addEventListener('click', exportTokens);
+createSamplesBtn.addEventListener('click', createSampleTokens);
 
 window.onmessage = (event: MessageEvent) => {
+  console.log('Mensagem recebida na UI:', event.data);
   const msg = event.data.pluginMessage;
   
-  if (msg.type === 'tokens-data') {
+  if (msg && msg.type === 'tokens-data') {
+    console.log('Tokens recebidos:', msg.tokens);
     allTokens = msg.tokens;
     filteredTokens = allTokens;
     updateStats();

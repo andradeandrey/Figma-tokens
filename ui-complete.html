@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 16px;
+      background: white;
+      color: #333;
+    }
+    
+    h1 { font-size: 24px; margin-bottom: 16px; }
+    
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    
+    .tab {
+      padding: 8px 16px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      color: #666;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+    }
+    
+    .tab.active {
+      color: #5551ff;
+      border-bottom-color: #5551ff;
+      font-weight: 600;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    
+    .stat-card {
+      background: #f8f8f8;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 28px;
+      font-weight: bold;
+      color: #5551ff;
+    }
+    
+    .stat-label {
+      font-size: 11px;
+      color: #666;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    
+    .search-bar {
+      flex: 1;
+      min-width: 200px;
+      padding: 10px;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    
+    .filter-chip {
+      padding: 6px 12px;
+      background: #f0f0f0;
+      border: 1px solid #e0e0e0;
+      border-radius: 20px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .filter-chip.active {
+      background: #5551ff;
+      color: white;
+      border-color: #5551ff;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      background: #5551ff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .btn:hover { background: #4845d2; }
+    
+    .btn-secondary {
+      background: #e0e0e0;
+      color: #333;
+    }
+    
+    .token-list {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 8px;
+    }
+    
+    .token-item {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      margin-bottom: 8px;
+      background: #f8f8f8;
+      border-radius: 6px;
+      gap: 12px;
+      transition: all 0.2s;
+    }
+    
+    .token-item:hover {
+      background: #f0f0f0;
+      transform: translateX(4px);
+    }
+    
+    .token-preview {
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      border: 1px solid #e0e0e0;
+      flex-shrink: 0;
+    }
+    
+    .token-info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .token-name {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .token-value {
+      font-size: 11px;
+      color: #666;
+      font-family: 'Monaco', 'Menlo', monospace;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .token-meta {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    
+    .token-source {
+      padding: 2px 8px;
+      background: #e0e0e0;
+      border-radius: 12px;
+      font-size: 10px;
+      color: #666;
+    }
+    
+    .token-source.figma { background: #f24e1e; color: white; }
+    .token-source.variables { background: #0fa958; color: white; }
+    .token-source.studio { background: #5551ff; color: white; }
+    
+    .token-type {
+      padding: 2px 8px;
+      background: #e0e0e0;
+      border-radius: 12px;
+      font-size: 10px;
+      color: #666;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+    
+    .status {
+      padding: 8px;
+      background: #f0f0f0;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: #666;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎨 Token Inspector</h1>
+  
+  <div class="status" id="status">Pronto para carregar tokens</div>
+  
+  <div class="tabs">
+    <button class="tab active" onclick="setFilter('all')">Todos</button>
+    <button class="tab" onclick="setFilter('figma')">Figma Styles</button>
+    <button class="tab" onclick="setFilter('variables')">Variables</button>
+    <button class="tab" onclick="setFilter('studio')">Token Studio</button>
+  </div>
+  
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value" id="totalTokens">0</div>
+      <div class="stat-label">Total Tokens</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="colorTokens">0</div>
+      <div class="stat-label">Cores</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="textTokens">0</div>
+      <div class="stat-label">Tipografia</div>
+    </div>
+  </div>
+  
+  <div class="controls">
+    <input type="text" class="search-bar" id="searchInput" placeholder="Buscar tokens..." oninput="filterTokens()">
+    <button class="filter-chip active" onclick="toggleType('all')">Todos</button>
+    <button class="filter-chip" onclick="toggleType('color')">Cor</button>
+    <button class="filter-chip" onclick="toggleType('typography')">Texto</button>
+    <button class="filter-chip" onclick="toggleType('effect')">Efeitos</button>
+    <button class="filter-chip" onclick="toggleType('grid')">Grid</button>
+  </div>
+  
+  <div class="controls">
+    <button class="btn" onclick="loadAllTokens()">🔄 Atualizar</button>
+    <button class="btn btn-secondary" onclick="exportAll()">📥 Exportar Tudo</button>
+  </div>
+  
+  <div class="token-list" id="tokenList">
+    <div class="empty-state">
+      Clique em "Atualizar" para carregar todos os tokens
+    </div>
+  </div>
+  
+  <script>
+    let allTokens = [];
+    let currentFilter = 'all';
+    let currentType = 'all';
+    
+    function updateStatus(text) {
+      document.getElementById('status').textContent = text;
+    }
+    
+    function loadAllTokens() {
+      updateStatus('Carregando todos os tokens...');
+      parent.postMessage({ 
+        pluginMessage: { type: 'get-all-tokens' } 
+      }, '*');
+    }
+    
+    function setFilter(filter) {
+      currentFilter = filter;
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      filterTokens();
+    }
+    
+    function toggleType(type) {
+      currentType = type;
+      document.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      filterTokens();
+    }
+    
+    function filterTokens() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      
+      let filtered = allTokens;
+      
+      // Filtrar por fonte
+      if (currentFilter !== 'all') {
+        filtered = filtered.filter(token => {
+          if (currentFilter === 'figma') return token.source === 'Figma';
+          if (currentFilter === 'variables') return token.source === 'Figma Variables';
+          if (currentFilter === 'studio') return token.source === 'Token Studio';
+          return true;
+        });
+      }
+      
+      // Filtrar por tipo
+      if (currentType !== 'all') {
+        filtered = filtered.filter(token => token.type === currentType);
+      }
+      
+      // Filtrar por busca
+      if (search) {
+        filtered = filtered.filter(token =>
+          token.name.toLowerCase().includes(search) ||
+          token.value.toLowerCase().includes(search) ||
+          (token.description && token.description.toLowerCase().includes(search))
+        );
+      }
+      
+      renderTokens(filtered);
+    }
+    
+    function renderTokens(tokens) {
+      const tokenList = document.getElementById('tokenList');
+      
+      if (!tokens || tokens.length === 0) {
+        tokenList.innerHTML = '<div class="empty-state">Nenhum token encontrado</div>';
+        return;
+      }
+      
+      tokenList.innerHTML = tokens.map(token => {
+        let preview = '';
+        
+        if (token.type === 'color' && token.value.startsWith('#')) {
+          preview = `<div class="token-preview" style="background: ${token.value}"></div>`;
+        } else if (token.type === 'typography') {
+          preview = '<div class="token-preview" style="background: #f0f0f0; display: flex; align-items: center; justify-content: center; font-size: 16px;">Aa</div>';
+        } else if (token.type === 'effect') {
+          preview = '<div class="token-preview" style="background: #f0f0f0; box-shadow: 0 2px 8px rgba(0,0,0,0.1)"></div>';
+        } else {
+          preview = '<div class="token-preview" style="background: #f0f0f0"></div>';
+        }
+        
+        let sourceClass = 'figma';
+        if (token.source === 'Figma Variables') sourceClass = 'variables';
+        if (token.source === 'Token Studio') sourceClass = 'studio';
+        
+        return `
+          <div class="token-item">
+            ${preview}
+            <div class="token-info">
+              <div class="token-name">${token.name}</div>
+              <div class="token-value">${token.value}</div>
+            </div>
+            <div class="token-meta">
+              <span class="token-source ${sourceClass}">${token.source}</span>
+              <span class="token-type">${token.type}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function exportAll() {
+      updateStatus('Exportando todos os tokens...');
+      parent.postMessage({ 
+        pluginMessage: { type: 'export-all' } 
+      }, '*');
+    }
+    
+    // Escutar mensagens
+    window.onmessage = (event) => {
+      const msg = event.data.pluginMessage;
+      if (!msg) return;
+      
+      if (msg.type === 'all-tokens-data') {
+        allTokens = msg.tokens || [];
+        const stats = msg.stats;
+        
+        // Atualizar estatísticas
+        document.getElementById('totalTokens').textContent = stats.total;
+        document.getElementById('colorTokens').textContent = stats.byType.color;
+        document.getElementById('textTokens').textContent = stats.byType.typography;
+        
+        updateStatus(`${stats.total} tokens encontrados (Styles: ${stats.figmaStyles}, Variables: ${stats.figmaVariables}, Studio: ${stats.tokenStudio})`);
+        
+        renderTokens(allTokens);
+      }
+      
+      if (msg.type === 'export-data') {
+        const blob = new Blob([msg.data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'all-tokens-export.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        updateStatus('Tokens exportados com sucesso!');
+      }
+    };
+    
+    // Carregar ao iniciar
+    setTimeout(loadAllTokens, 100);
+  </script>
+</body>
+</html>

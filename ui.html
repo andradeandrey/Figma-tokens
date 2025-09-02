@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 16px;
+      background: white;
+    }
+    
+    h1 {
+      font-size: 20px;
+      margin-bottom: 16px;
+    }
+    
+    .btn {
+      padding: 10px 16px;
+      background: #5551ff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-right: 8px;
+      margin-bottom: 16px;
+    }
+    
+    .btn:hover {
+      background: #4845d2;
+    }
+    
+    .btn-secondary {
+      background: #e0e0e0;
+      color: #333;
+    }
+    
+    .token-list {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .stats {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #f8f8f8;
+      border-radius: 6px;
+    }
+    
+    .stat-item {
+      flex: 1;
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #5551ff;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+    }
+    
+    .token-item {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      margin-bottom: 8px;
+      background: #f8f8f8;
+      border-radius: 6px;
+    }
+    
+    .token-color {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      margin-right: 12px;
+      border: 1px solid #e0e0e0;
+    }
+    
+    .token-info {
+      flex: 1;
+    }
+    
+    .token-name {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    
+    .token-value {
+      font-size: 12px;
+      color: #666;
+      font-family: monospace;
+    }
+    
+    .token-type {
+      padding: 2px 8px;
+      background: #e0e0e0;
+      border-radius: 12px;
+      font-size: 11px;
+      color: #666;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+    
+    .status {
+      padding: 8px;
+      background: #f0f0f0;
+      border-radius: 4px;
+      margin-bottom: 16px;
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <h1>Token Lister</h1>
+  
+  <div class="status" id="status">Pronto para carregar tokens</div>
+  
+  <div>
+    <button class="btn" onclick="getTokens()">Carregar Tokens</button>
+    <button class="btn btn-secondary" onclick="createSamples()">Criar Exemplos</button>
+    <button class="btn btn-secondary" onclick="exportTokens()">Exportar JSON</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">Importar JSON</button>
+    <input type="file" id="fileInput" accept=".json" style="display:none" onchange="importTokens(event)">
+  </div>
+  
+  <div class="stats" id="stats" style="display:none">
+    <div class="stat-item">
+      <div class="stat-value" id="totalCount">0</div>
+      <div class="stat-label">Total</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" id="colorCount">0</div>
+      <div class="stat-label">Cores</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value" id="textCount">0</div>
+      <div class="stat-label">Textos</div>
+    </div>
+  </div>
+  
+  <input type="text" placeholder="Buscar tokens..." style="width: 100%; padding: 8px; margin-bottom: 16px; border: 1px solid #e0e0e0; border-radius: 6px; display: none" id="searchInput" oninput="filterTokens()">
+  
+  <div class="token-list" id="tokenList">
+    <div class="empty-state">Clique em "Carregar Tokens" para começar</div>
+  </div>
+  
+  <script>
+    console.log('UI carregada');
+    
+    let allTokens = [];
+    
+    function updateStatus(text) {
+      document.getElementById('status').textContent = text;
+      console.log('Status:', text);
+    }
+    
+    function getTokens() {
+      updateStatus('Carregando tokens...');
+      console.log('Solicitando tokens ao plugin...');
+      
+      parent.postMessage({ 
+        pluginMessage: { type: 'get-tokens' } 
+      }, '*');
+    }
+    
+    function createSamples() {
+      updateStatus('Criando tokens de exemplo...');
+      console.log('Solicitando criação de samples...');
+      
+      parent.postMessage({ 
+        pluginMessage: { type: 'create-samples' } 
+      }, '*');
+    }
+    
+    function renderTokens(tokens) {
+      const tokenList = document.getElementById('tokenList');
+      
+      if (!tokens || tokens.length === 0) {
+        tokenList.innerHTML = '<div class="empty-state">Nenhum token encontrado</div>';
+        updateStatus('Nenhum token encontrado');
+        document.getElementById('stats').style.display = 'none';
+        document.getElementById('searchInput').style.display = 'none';
+        return;
+      }
+      
+      updateStatus(tokens.length + ' tokens encontrados');
+      
+      // Mostrar estatísticas
+      document.getElementById('stats').style.display = 'flex';
+      document.getElementById('searchInput').style.display = 'block';
+      document.getElementById('totalCount').textContent = tokens.length;
+      document.getElementById('colorCount').textContent = tokens.filter(t => t.type === 'color').length;
+      document.getElementById('textCount').textContent = tokens.filter(t => t.type === 'typography').length;
+      
+      tokenList.innerHTML = tokens.map(token => {
+        const isColor = token.type === 'color';
+        const colorStyle = isColor && token.value !== 'Gradient' ? 
+          `style="background: ${token.value}"` : 
+          (isColor ? 'style="background: linear-gradient(45deg, #5551ff, #00c896)"' : '');
+        
+        return `
+          <div class="token-item">
+            ${isColor ? `<div class="token-color" ${colorStyle}></div>` : ''}
+            <div class="token-info">
+              <div class="token-name">${token.name}</div>
+              <div class="token-value">${token.value}</div>
+            </div>
+            <span class="token-type">${token.type}</span>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function filterTokens() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const filtered = allTokens.filter(token => 
+        token.name.toLowerCase().includes(search) || 
+        token.value.toLowerCase().includes(search)
+      );
+      renderTokens(filtered);
+    }
+    
+    function exportTokens() {
+      const jsonStr = JSON.stringify(allTokens, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'tokens.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      updateStatus('Tokens exportados!');
+    }
+    
+    function importTokens(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      updateStatus('Importando tokens...');
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          console.log('Dados importados:', data);
+          
+          // Enviar para o plugin processar
+          parent.postMessage({ 
+            pluginMessage: { 
+              type: 'import-tokens',
+              data: data
+            } 
+          }, '*');
+          
+          updateStatus('Processando tokens importados...');
+        } catch (err) {
+          console.error('Erro ao importar:', err);
+          updateStatus('Erro ao importar arquivo');
+        }
+      };
+      reader.readAsText(file);
+    }
+    
+    // Escutar mensagens do plugin
+    window.onmessage = (event) => {
+      console.log('UI recebeu mensagem:', event.data);
+      
+      const msg = event.data.pluginMessage;
+      if (!msg) return;
+      
+      if (msg.type === 'tokens-data') {
+        console.log('Tokens recebidos:', msg.tokens);
+        allTokens = msg.tokens || [];
+        renderTokens(allTokens);
+      }
+      
+      if (msg.type === 'reload') {
+        getTokens();
+      }
+    };
+    
+    // Carregar tokens ao iniciar
+    setTimeout(() => {
+      getTokens();
+    }, 100);
+  </script>
+</body>
+</html>

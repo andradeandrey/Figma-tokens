@@ -1,12 +1,8 @@
 {
-  "name": "Token Lister",
-  "id": "token-lister-plugin",
+  "name": "Token Inspector - Complete",
+  "id": "token-inspector-complete",
   "api": "1.0.0",
-  "main": "dist/code.js",
-  "capabilities": [],
-  "enableProposedApi": false,
-  "editorType": [
-    "figma"
-  ],
-  "ui": "dist/ui.html"
+  "main": "code-complete.js",
+  "ui": "ui-complete.html",
+  "editorType": ["figma"]
 }
