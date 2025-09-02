@@ -91,32 +91,40 @@ function formatTokenValue(value) {
 }
 
 // Coletar TODOS os estilos locais do Figma
-function collectAllFigmaStyles() {
+async function collectAllFigmaStyles() {
   const tokens = [];
   
   // 1. Paint Styles (cores, gradientes)
   try {
-    const paintStyles = figma.getLocalPaintStyles();
+    const paintStyles = await figma.getLocalPaintStylesAsync();
     console.log(`Paint Styles: ${paintStyles.length}`);
     
     paintStyles.forEach(style => {
       try {
         let value = 'Complex';
-        if (style.paints && style.paints.length > 0) {
+        // Verificar se style.paints existe e é array
+        if (style.paints && Array.isArray(style.paints) && style.paints.length > 0) {
           const paint = style.paints[0];
-          if (paint.type === 'SOLID') {
+          if (paint && paint.type === 'SOLID' && paint.color) {
             const { r, g, b } = paint.color;
-            value = '#' + [r, g, b].map(x => {
-              const hex = Math.round(x * 255).toString(16);
-              return hex.length === 1 ? '0' + hex : hex;
-            }).join('').toUpperCase();
+            // Verificar se os valores RGB são válidos
+            if (typeof r === 'number' && typeof g === 'number' && typeof b === 'number') {
+              value = '#' + [r, g, b].map(x => {
+                const hex = Math.round(x * 255).toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+              }).join('').toUpperCase();
+            }
           } else if (paint.type === 'GRADIENT_LINEAR') {
             value = 'Linear Gradient';
           } else if (paint.type === 'GRADIENT_RADIAL') {
             value = 'Radial Gradient';
-          } else if (paint.type === 'IMAGE') {
-            value = 'Image Fill';
+            } else if (paint && paint.type === 'IMAGE') {
+              value = 'Image Fill';
+            }
           }
+        } else {
+          // Se não tem paints válidos, marcar como referência
+          value = 'No paint data';
         }
         
         tokens.push({
@@ -130,6 +138,16 @@ function collectAllFigmaStyles() {
         });
       } catch (e) {
         console.error(`Erro em paint style ${style.name}:`, e);
+        // Adicionar o token mesmo com erro para não perder dados
+        tokens.push({
+          name: style.name,
+          value: 'Error reading',
+          type: 'color',
+          source: 'Figma',
+          id: style.id || 'unknown',
+          description: 'Error processing this style',
+          consumers: 0
+        });
       }
     });
   } catch (e) {
@@ -138,12 +156,23 @@ function collectAllFigmaStyles() {
   
   // 2. Text Styles
   try {
-    const textStyles = figma.getLocalTextStyles();
+    const textStyles = await figma.getLocalTextStylesAsync();
     console.log(`Text Styles: ${textStyles.length}`);
     
     textStyles.forEach(style => {
       try {
-        const fontInfo = `${style.fontSize}px / ${style.lineHeight ? style.lineHeight.value + style.lineHeight.unit : 'auto'} / ${style.fontName.family} ${style.fontName.style}`;
+        let fontInfo = 'Unknown';
+        
+        // Verificar se as propriedades existem
+        if (style.fontSize && style.fontName) {
+          const lineHeightStr = style.lineHeight 
+            ? (style.lineHeight.value ? style.lineHeight.value + (style.lineHeight.unit || '') : 'auto')
+            : 'auto';
+          const fontFamily = style.fontName.family || 'Unknown';
+          const fontStyle = style.fontName.style || 'Regular';
+          
+          fontInfo = `${style.fontSize}px / ${lineHeightStr} / ${fontFamily} ${fontStyle}`;
+        }
         
         tokens.push({
           name: style.name,
@@ -154,17 +183,26 @@ function collectAllFigmaStyles() {
           description: style.description || '',
           consumers: (style.consumers && style.consumers.length) || 0,
           details: {
-            fontSize: style.fontSize,
-            fontFamily: style.fontName.family,
-            fontWeight: style.fontName.style,
-            lineHeight: style.lineHeight,
-            letterSpacing: style.letterSpacing,
-            textCase: style.textCase,
-            textDecoration: style.textDecoration
+            fontSize: style.fontSize || 0,
+            fontFamily: (style.fontName && style.fontName.family) || 'Unknown',
+            fontWeight: (style.fontName && style.fontName.style) || 'Regular',
+            lineHeight: style.lineHeight || null,
+            letterSpacing: style.letterSpacing || null,
+            textCase: style.textCase || null,
+            textDecoration: style.textDecoration || null
           }
         });
       } catch (e) {
         console.error(`Erro em text style ${style.name}:`, e);
+        tokens.push({
+          name: style.name,
+          value: 'Error reading',
+          type: 'typography',
+          source: 'Figma',
+          id: style.id || 'unknown',
+          description: 'Error processing this style',
+          consumers: 0
+        });
       }
     });
   } catch (e) {
@@ -173,7 +211,7 @@ function collectAllFigmaStyles() {
   
   // 3. Effect Styles (sombras, blur)
   try {
-    const effectStyles = figma.getLocalEffectStyles();
+    const effectStyles = await figma.getLocalEffectStylesAsync();
     console.log(`Effect Styles: ${effectStyles.length}`);
     
     effectStyles.forEach(style => {
@@ -208,7 +246,7 @@ function collectAllFigmaStyles() {
   
   // 4. Grid Styles
   try {
-    const gridStyles = figma.getLocalGridStyles();
+    const gridStyles = await figma.getLocalGridStylesAsync();
     console.log(`Grid Styles: ${gridStyles.length}`);
     
     gridStyles.forEach(style => {
@@ -247,11 +285,11 @@ function collectAllFigmaStyles() {
 }
 
 // Coletar variáveis locais (Figma Variables)
-function collectFigmaVariables() {
+async function collectFigmaVariables() {
   const tokens = [];
   
   try {
-    const collections = figma.variables.getLocalVariableCollections();
+    const collections = await figma.variables.getLocalVariableCollectionsAsync();
     console.log(`Variable Collections: ${collections.length}`);
     
     collections.forEach(collection => {
@@ -310,15 +348,15 @@ function formatVariableValue(value) {
 }
 
 // Handler de mensagens
-figma.ui.onmessage = msg => {
+figma.ui.onmessage = async msg => {
   console.log('Mensagem recebida:', msg);
   
   if (msg.type === 'get-all-tokens') {
     console.log('Coletando TODOS os tokens...');
     
-    // Coletar de todas as fontes
-    const figmaStyles = collectAllFigmaStyles();
-    const figmaVariables = collectFigmaVariables();
+    // Coletar de todas as fontes (agora async)
+    const figmaStyles = await collectAllFigmaStyles();
+    const figmaVariables = await collectFigmaVariables();
     const tokenStudioTokens = detectTokenStudioTokens();
     
     // Combinar todos
@@ -354,9 +392,9 @@ figma.ui.onmessage = msg => {
   }
   
   if (msg.type === 'export-all') {
-    // Exportar em formato estruturado
-    const figmaStyles = collectAllFigmaStyles();
-    const figmaVariables = collectFigmaVariables();
+    // Exportar em formato estruturado (agora async)
+    const figmaStyles = await collectAllFigmaStyles();
+    const figmaVariables = await collectFigmaVariables();
     const tokenStudioTokens = detectTokenStudioTokens();
     
     const exportData = {

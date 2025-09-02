@@ -1,8 +1,10 @@
 {
-  "name": "Token Inspector - Complete",
-  "id": "token-inspector-complete",
+  "name": "Token Inspector",
+  "id": "1544825411994167173",   
   "api": "1.0.0",
+  "networkAccess": { "allowedDomains": ["none"] },
   "main": "code-complete.js",
   "ui": "ui-complete.html",
-  "editorType": ["figma"]
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page"
 }
